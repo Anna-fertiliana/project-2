@@ -5,11 +5,17 @@ import { axiosInstance } from "@/lib/axios";
 import PostCard from "./PostCard";
 import { useState } from "react";
 import PostViewer from "./PostViewer";
+import { Post } from "@/types/post";
+import { ApiResponse } from "@/types/api";
 
 export default function Feed() {
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
 
-  const { data, isLoading, isError } = useQuery({
+  interface FeedData {
+  posts: Post[];
+}
+
+  const { data, isLoading, isError } = useQuery<ApiResponse<FeedData>>({
     queryKey: ["feed"],
     queryFn: async () => {
       const res = await axiosInstance.get("/api/posts");
@@ -17,7 +23,7 @@ export default function Feed() {
     },
   });
 
-  const posts = data?.data?.posts || [];
+ const posts: Post[] = data?.data.posts ?? [];
 
   if (isLoading) {
     return (
@@ -45,9 +51,9 @@ export default function Feed() {
 
   return (
     <>
-      <section className="flex justify-center px-4 mt-6">
+      <section className="flex justify-center">
         <div className="w-full max-w-xl space-y-6">
-          {posts.map((post: any) => (
+          {posts.map((post) => (
             <PostCard
               key={post.id}
               postId={post.id}

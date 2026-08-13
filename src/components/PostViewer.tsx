@@ -12,6 +12,9 @@ import {
   X,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import type { Post } from "@/types/post";
+import type { Comment } from "@/types/comment";
+import type { ApiResponse } from "@/types/api";
 import LikeButton from "@/components/LikeButton";
 import SaveButton from "@/components/SaveButton";
 
@@ -43,7 +46,7 @@ export default function PostViewer({
   }, [variant]);
 
   // 🔹 FETCH POST
-  const { data, isLoading } = useQuery({
+  const { data, isLoading } = useQuery<ApiResponse<Post>>({
     queryKey: ["post", postId],
     queryFn: async () => {
       const res = await axiosInstance.get(`/api/posts/${postId}`);
@@ -65,21 +68,26 @@ export default function PostViewer({
     onMutate: async (content) => {
       await queryClient.cancelQueries({ queryKey: ["post", postId] });
 
-      const previous = queryClient.getQueryData<any>([
+      const previous = queryClient.getQueryData<ApiResponse<Post>>([
         "post",
         postId,
       ]);
 
-      const fakeComment = {
-        id: Date.now(),
+      const fakeComment: Comment = {
+        id: Date.now().toString(),
         content,
+        createdAt: new Date().toISOString(),
         user: {
+          id: 0,
           username: "You",
+          name: "You",
           avatarUrl: "/avatar.png",
         },
       };
 
-      queryClient.setQueryData(["post", postId], (old: any) => {
+      queryClient.setQueryData<ApiResponse<Post>>(
+      ["post", postId],
+      (old) => {
         if (!old) return old;
 
         return {
@@ -200,7 +208,7 @@ export default function PostViewer({
               No comments yet
             </p>
           ) : (
-            post.comments?.map((c: any) => (
+            post.comments?.map((c: Comment) => (
               <div key={c.id} className="flex gap-3">
                 <img
                   src={c.user?.avatarUrl || "/avatar.png"}

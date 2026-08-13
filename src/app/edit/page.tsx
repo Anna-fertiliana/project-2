@@ -6,10 +6,19 @@ import { ArrowLeft } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+type EditProfileForm = {
+  name: string;
+  username: string;
+  email: string;
+  phone: string;
+  bio: string;
+  avatarUrl: string;
+};
+
 export default function EditProfilePage() {
   const router = useRouter();
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<EditProfileForm>({
     name: "",
     username: "",
     email: "",
@@ -26,8 +35,18 @@ export default function EditProfilePage() {
     fetchProfile();
   }, []);
 
+  const fields: {
+    label: string;
+    name: keyof EditProfileForm;
+  }[] = [
+    { label: "Name", name: "name" },
+    { label: "Username", name: "username" },
+    { label: "Email", name: "email" },
+    { label: "Number Phone", name: "phone" },
+  ];
+
   const getAvatarUrl = (url: string) => {
-    if (!url) return "/avatar-placeholder.png";
+    if (!url) return "/avatar.png";
     if (url.startsWith("http") || url.startsWith("blob")) return url;
     return `${API_URL}${url}`;
   };
@@ -35,16 +54,21 @@ export default function EditProfilePage() {
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem("token");
-      if (!token) return router.push("/login");
+      if (!token) {
+        router.push("/login");
+        return;
+      }
 
       const res = await fetch(`${API_URL}/api/me`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       const data = await res.json();
 
       if (res.ok) {
-        const user = data.data?.user || data.data;
+        const user = data.data.profile;
 
         setForm({
           name: user.name || "",
@@ -65,9 +89,11 @@ export default function EditProfilePage() {
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
+    const { name, value } = e.target;
+
     setForm((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [name]: value,
     }));
   };
 
@@ -75,15 +101,14 @@ export default function EditProfilePage() {
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = e.target.files?.[0];
+
     if (!file) return;
 
     setAvatarFile(file);
 
-    const preview = URL.createObjectURL(file);
-
     setForm((prev) => ({
       ...prev,
-      avatarUrl: preview,
+      avatarUrl: URL.createObjectURL(file),
     }));
   };
 
@@ -92,9 +117,14 @@ export default function EditProfilePage() {
       setSaving(true);
 
       const token = localStorage.getItem("token");
-      if (!token) return router.push("/login");
+
+      if (!token) {
+        router.push("/login");
+        return;
+      }
 
       const formData = new FormData();
+
       formData.append("name", form.name);
       formData.append("username", form.username);
       formData.append("bio", form.bio);
@@ -119,11 +149,11 @@ export default function EditProfilePage() {
       }
 
       const updatedUser = data.data?.user || data.data;
+
       localStorage.setItem("user", JSON.stringify(updatedUser));
 
       router.replace("/profile?updated=true");
       router.refresh();
-
     } catch (err) {
       console.error(err);
     } finally {
@@ -132,36 +162,41 @@ export default function EditProfilePage() {
   };
 
   if (loading) {
-    return <div className="text-white text-center py-10">Loading...</div>;
+    return (
+      <div className="text-white text-center py-10">
+        Loading...
+      </div>
+    );
   }
 
   return (
     <main className="max-w-3xl mx-auto text-white px-4 pb-24">
-
       {/* HEADER */}
       <div className="flex items-center gap-3 py-5">
         <button onClick={() => router.back()}>
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-lg font-semibold">Edit Profile</h1>
+
+        <h1 className="text-lg font-semibold">
+          Edit Profile
+        </h1>
       </div>
 
-      {/* ✅ MOBILE FIRST: column */}
+      {/* CONTENT */}
       <div className="flex flex-col md:flex-row gap-8 md:gap-12">
-
         {/* AVATAR */}
         <div className="flex flex-col items-center md:w-40">
-
           <img
             src={getAvatarUrl(form.avatarUrl)}
-            onError={(e) =>
-              (e.currentTarget.src = "/avatar-placeholder.png")
-            }
+            onError={(e) => {
+              e.currentTarget.src = "/avatar.png";
+            }}
             className="w-24 h-24 rounded-full object-cover border border-zinc-700"
           />
 
           <label className="mt-4 px-4 py-1.5 text-xs border border-zinc-700 rounded-full cursor-pointer hover:bg-zinc-800 transition">
             Change Photo
+
             <input
               type="file"
               accept="image/*"
@@ -169,18 +204,11 @@ export default function EditProfilePage() {
               className="hidden"
             />
           </label>
-
         </div>
 
         {/* FORM */}
         <div className="flex-1 space-y-5">
-
-          {[
-            { label: "Name", name: "name" },
-            { label: "Username", name: "username" },
-            { label: "Email", name: "email" },
-            { label: "Number Phone", name: "phone" },
-          ].map((field) => (
+          {fields.map((field) => (
             <div key={field.name}>
               <label className="text-xs text-zinc-400">
                 {field.label}
@@ -188,7 +216,7 @@ export default function EditProfilePage() {
 
               <input
                 name={field.name}
-                value={(form as any)[field.name]}
+                value={form[field.name]}
                 onChange={handleChange}
                 className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
               />
@@ -196,7 +224,9 @@ export default function EditProfilePage() {
           ))}
 
           <div>
-            <label className="text-xs text-zinc-400">Bio</label>
+            <label className="text-xs text-zinc-400">
+              Bio
+            </label>
 
             <textarea
               name="bio"
@@ -210,13 +240,11 @@ export default function EditProfilePage() {
           <button
             onClick={handleSubmit}
             disabled={saving}
-            className="w-full py-3 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 font-medium hover:opacity-90 transition"
+            className="w-full py-3 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 font-medium hover:opacity-90 disabled:opacity-50 transition"
           >
             {saving ? "Saving..." : "Save Changes"}
           </button>
-
         </div>
-
       </div>
     </main>
   );

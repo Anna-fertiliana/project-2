@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Heart } from "lucide-react";
 import { motion } from "framer-motion";
@@ -9,12 +9,16 @@ interface LikeButtonProps {
   postId: string;
   initialLiked?: boolean;
   initialCount?: number;
+
+  // Trigger dari parent (double tap)
+  triggerLike?: number;
 }
 
 export default function LikeButton({
   postId,
   initialLiked = false,
   initialCount = 0,
+  triggerLike,
 }: LikeButtonProps) {
   const API_URL =
     process.env.NEXT_PUBLIC_API_URL ||
@@ -26,6 +30,7 @@ export default function LikeButton({
   const mutation = useMutation({
     mutationFn: async (nextLiked: boolean) => {
       const token = localStorage.getItem("token");
+
       if (!token) throw new Error("No token");
 
       const res = await fetch(`${API_URL}/api/posts/${postId}/like`, {
@@ -42,25 +47,26 @@ export default function LikeButton({
       return res.json();
     },
 
-    // ✅ OPTIMISTIC UPDATE (BENAR)
+    // ✅ Optimistic Update
     onMutate: async (nextLiked) => {
       const prevLiked = liked;
       const prevCount = count;
 
       setLiked(nextLiked);
-      setCount((prev) =>
-        nextLiked ? prev + 1 : Math.max(0, prev - 1)
-      );
+      setCount((prev) => (nextLiked ? prev + 1 : Math.max(0, prev - 1)));
 
-      return { prevLiked, prevCount };
+      return {
+        prevLiked,
+        prevCount,
+      };
     },
 
-    // ❌ ERROR → rollback
+    // ❌ Rollback jika gagal
     onError: (_err, _vars, context) => {
-      if (context) {
-        setLiked(context.prevLiked);
-        setCount(context.prevCount);
-      }
+      if (!context) return;
+
+      setLiked(context.prevLiked);
+      setCount(context.prevCount);
     },
   });
 
@@ -71,12 +77,15 @@ export default function LikeButton({
     mutation.mutate(nextLiked);
   };
 
+  // 🔥 Trigger dari parent (double tap)
+  useEffect(() => {
+    if (triggerLike === undefined || triggerLike === -1) return;
+
+    handleLike();
+  }, [triggerLike]);
+
   return (
-    <button
-      onClick={handleLike}
-      className="flex items-center gap-1 group"
-    >
-      {/* ICON */}
+    <button onClick={handleLike} className="flex items-center gap-1 group">
       <motion.div
         key={liked ? "liked" : "unliked"}
         initial={{ scale: 0.8 }}
@@ -93,10 +102,7 @@ export default function LikeButton({
         />
       </motion.div>
 
-      {/* COUNT */}
-      <span className="text-sm text-zinc-300">
-        {count}
-      </span>
+      <span className="text-sm text-zinc-300">{count}</span>
     </button>
   );
 }

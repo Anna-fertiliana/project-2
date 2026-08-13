@@ -17,7 +17,7 @@ export default function BottomNav() {
         bg-zinc-900/80 backdrop-blur-xl
         border border-zinc-800
         rounded-full
-        px-8 py-3
+        px-8 py-1
         shadow-[0_8px_30px_rgba(0,0,0,0.6)]
       ">
 

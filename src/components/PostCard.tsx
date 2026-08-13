@@ -4,18 +4,18 @@ import { MessageCircle, Send } from "lucide-react";
 import { useRouter } from "next/navigation";
 import LikeButton from "@/components/LikeButton";
 import SaveButton from "@/components/SaveButton";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 type PostCardProps = {
   postId: string;
   image?: string;
   caption: string;
   username: string;
-  avatar?: string;
+  avatar?: string | null;
   likes: number;
   comments: number;
   isLiked?: boolean;
-  isSaved?: boolean; // 🔥 tambahan
+  isSaved?: boolean;
   onOpen?: () => void;
 };
 
@@ -33,6 +33,8 @@ export default function PostCard({
 }: PostCardProps) {
   const router = useRouter();
   const lastTap = useRef(0);
+  const clickTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [triggerLike, setTriggerLike] = useState(-1);
 
   // 👉 ke profile
   const goToProfile = (e: React.MouseEvent) => {
@@ -40,16 +42,24 @@ export default function PostCard({
     router.push(`/users/${username}`);
   };
 
-  // 👉 DOUBLE TAP LIKE (trigger LikeButton)
-  const likeRef = useRef<HTMLButtonElement | null>(null);
-
-  const handleDoubleTap = () => {
+  const handleImageClick = () => {
     const now = Date.now();
-    const DOUBLE_PRESS_DELAY = 300;
+    const DOUBLE_PRESS_DELAY = 250;
 
-    if (lastTap.current && now - lastTap.current < DOUBLE_PRESS_DELAY) {
-      // trigger click ke LikeButton
-      likeRef.current?.click();
+    if (now - lastTap.current < DOUBLE_PRESS_DELAY) {
+      // Double tap
+      if (clickTimeout.current) {
+        clearTimeout(clickTimeout.current);
+        clickTimeout.current = null;
+      }
+
+      setTriggerLike(Date.now());
+    } else {
+      // Tunggu dulu, siapa tahu ada tap kedua
+      clickTimeout.current = setTimeout(() => {
+        onOpen?.();
+        clickTimeout.current = null;
+      }, DOUBLE_PRESS_DELAY);
     }
 
     lastTap.current = now;
@@ -57,7 +67,6 @@ export default function PostCard({
 
   return (
     <article className="bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800">
-
       {/* HEADER */}
       <div className="flex items-center gap-3 px-4 pt-4 pb-2">
         <img
@@ -76,11 +85,7 @@ export default function PostCard({
       </div>
 
       {/* IMAGE */}
-      <div
-        onClick={onOpen}
-        onDoubleClick={handleDoubleTap}
-        className="cursor-pointer"
-      >
+      <div onClick={handleImageClick} className="cursor-pointer">
         <img
           src={image || "/placeholder.png"}
           onError={(e) => (e.currentTarget.src = "/placeholder.png")}
@@ -90,21 +95,17 @@ export default function PostCard({
 
       {/* CONTENT */}
       <div className="px-4 pb-4 pt-2 space-y-2">
-
         {/* ACTION */}
         <div className="flex items-center justify-between">
-
           {/* LEFT */}
           <div className="flex items-center gap-4">
-
             {/* LIKE */}
-            <div ref={likeRef as any}>
-              <LikeButton
-                postId={postId}
-                initialLiked={isLiked}
-                initialCount={likes}
-              />
-            </div>
+            <LikeButton
+              postId={postId}
+              initialLiked={isLiked}
+              initialCount={likes}
+              triggerLike={triggerLike}
+            />
 
             {/* COMMENT */}
             <button
@@ -131,15 +132,10 @@ export default function PostCard({
             >
               <Send size={20} />
             </button>
-
           </div>
 
           {/* SAVE (API CONNECTED) */}
-          <SaveButton
-            postId={postId}
-            initialSaved={isSaved}
-          />
-
+          <SaveButton postId={postId} initialSaved={isSaved} />
         </div>
 
         {/* CAPTION */}
@@ -152,7 +148,6 @@ export default function PostCard({
           </span>
           {caption}
         </p>
-
       </div>
     </article>
   );
