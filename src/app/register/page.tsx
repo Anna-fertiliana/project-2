@@ -66,7 +66,7 @@ export default function Register() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-black to-purple-900 px-4">
+    <main className="min-h-screen flex items-start justify-center bg-gradient-to-b from-black to-purple-900 px-4 py-8 pb-24">
       <div className="w-full max-w-sm bg-[#0B0F19]/80 backdrop-blur rounded-2xl border border-gray-800 p-6 shadow-xl text-white">
 
         {/* Logo + Title */}
